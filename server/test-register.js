@@ -10,8 +10,13 @@ try {
             'Content-Type': 'application/json', //we are telling the server:"im sending you json data"
         },
         body: JSON.stringify({
-            username:"voter_01",
-            password: "MySecretPassword123",
+            username: "Mr_Sharma_Real",
+
+            password: "MySecurePass",
+
+            flatNumber: "A-101",
+
+            email: "sharma@test.com"
         }),
     });
     const data = await response.json();

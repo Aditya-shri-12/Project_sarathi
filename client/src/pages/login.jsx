@@ -1,7 +1,8 @@
 import { useState } from "react";
-import axios from "../lib/axios"; // Import the bridge we just made
-import { useNavigate } from "react-router-dom"; // To move pages
+import axios from "../lib/axios";
+import { useNavigate, Link } from "react-router-dom"; // <--- Both imports in one line
 import { motion } from "framer-motion";
+
 
 const Login = () => {
   const [activeTab, setActiveTab] = useState("voter"); // 'voter' or 'admin'
@@ -131,6 +132,14 @@ const Login = () => {
               {loading ? "Verifying..." : "Sign In"}
             </button>
           </form>
+        </div>
+
+        {/* --- ADD THIS FOOTER --- */}
+        <div className="bg-slate-50 p-4 text-center text-sm text-slate-500 border-t border-slate-100">
+          New Resident?{" "}
+          <Link to="/register" className="text-blue-600 font-bold hover:underline">
+            Claim your account
+          </Link>
         </div>
 
       </motion.div>

@@ -4,6 +4,7 @@ import HomePage from "./pages/Home";
 import LoginPage from "./pages/login";
 import VoterDashboard from "./pages/VoterDashboard";
 import AdminDashboard from "./pages/AdminDashboard"; // <--- 1. IMPORT THIS
+import VoterRegister from "./pages/VoterRegister";
 
 function App() {
   return (
@@ -12,7 +13,11 @@ function App() {
       <div className="min-h-screen bg-slate-50">
         <Routes>
           <Route path="/" element={<HomePage />} />
-          <Route path="/login" element={<LoginPage />} />
+
+          <Route path="/login" element={<LoginPage />} /> 
+          
+          {/* Voter Registration Route */}
+          <Route path="/register" element={<VoterRegister />} />
           
           {/* Voter Route */}
           <Route path="/nominee/dashboard" element={<VoterDashboard />} />

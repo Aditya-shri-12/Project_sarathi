@@ -1,30 +1,54 @@
+const Whitelist = require('../models/whitelist');
 const router = require('express').Router();
 const User = require('../models/user'); // Import the Blueprint we just made
 
 // REGISTER ROUTE
 // This listens for requests at "/api/auth/register"
+// SECURE REGISTER ROUTE (The Bouncer)
 router.post('/register', async (req, res) => {
   try {
-    // 1. Get the data from the user (Frontend sends this)
-    const { username, password } = req.body;
+    // We expect the user to send these 4 things
+    const { username, password, flatNumber, email } = req.body;
 
-    // 2. Create a new User object using our Blueprint
+    // 🛑 CHECK 1: Is this person on the Guest List?
+    const validResident = await Whitelist.findOne({ 
+      flatNumber: flatNumber, 
+      email: email 
+    });
+
+    // If not found in whitelist, KICK THEM OUT
+    if (!validResident) {
+      return res.status(401).json("ACCESS DENIED: You are not in the society records. Please contact the Secretary.");
+    }
+
+    // 🛑 CHECK 2: Have they already registered?
+    if (validResident.isRegistered) {
+      return res.status(400).json("FRAUD ALERT: An account for this flat already exists!");
+    }
+
+    // ✅ CHECK 3: If passed, Create the User
     const newUser = new User({
       username: username,
       password: password,
+      // We explicitly save these details now
+      email: email,
+      flatNumber: flatNumber,
+      // Default role is 'resident'
+      role: 'resident'
     });
 
-    // 3. Save it to MongoDB
     const user = await newUser.save();
 
-    // 4. Send back a success message
+    // 📝 IMPORTANT: Mark them as "Registered" in the Whitelist
+    // This prevents them (or anyone else) from signing up with this flat again.
+    validResident.isRegistered = true;
+    await validResident.save();
+
     res.status(200).json(user);
-    console.log("✅ New User Registered:", username);
+    console.log(`✅ Secure Registration: ${username} claimed Flat ${flatNumber}`);
 
   } catch (err) {
-    // If something goes wrong (like duplicate name), tell us
-    res.status(500).json(err);
-    console.log("❌ Registration Failed:", err.message);
+    res.status(500).json(err.message);
   }
 });
 
