@@ -81,14 +81,9 @@ const Portal = () => {
             color="text-orange-600"
           />
 
-          {/* 5. SUPER ADMIN */}
-          <PortalCard 
-            to="/portal/admin" 
-            icon={<FiShield />} 
-            title="Super Admin" 
-            desc="System Configuration." 
-            color="text-red-600"
-          />
+          {/* ❌ SUPER ADMIN CARD REMOVED 
+             To access, you must type: /portal/admin
+          */}
         </div>
 
       </div>

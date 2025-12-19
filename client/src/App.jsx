@@ -1,55 +1,33 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-
-// 1. IMPORT ALL PAGES
-import Login from "./pages/Login";       // (Optional: If you still use generic login)
+import LandingPage from "./pages/LandingPage"; // <--- Import New Page
+import Portal from "./pages/Portal";
+import RoleLogin from "./pages/RoleLogin";
 import Signup from "./pages/Signup";
 import AdminDashboard from "./pages/AdminDashboard";
 import VoterDashboard from "./pages/VoterDashboard";
-import Portal from "./pages/Portal";     // <--- The 5-Card Home Page
-import RoleLogin from "./pages/RoleLogin"; // <--- The "Universal" Login Page we made
 
 function App() {
-  // Simple auth check (In real app, check context/state)
   const user = localStorage.getItem("user"); 
 
   return (
     <BrowserRouter>
       <Routes>
-        {/* ==============================
-            PUBLIC ROUTES
-        ============================== */}
-        
-        {/* 1. HOME PAGE (The 5-Card Portal) */}
-        <Route path="/" element={<Portal />} />
+        {/* 1. HOME PAGE (The Marketing Landing Page) */}
+        <Route path="/" element={<LandingPage />} />
 
-        {/* 2. REGISTRATION (New Residents) */}
+        {/* 2. THE GRAND HALL (Role Selection) */}
+        <Route path="/portal" element={<Portal />} />
+
+        {/* 3. LOGIN & SIGNUP */}
         <Route path="/signup" element={<Signup />} />
-
-        {/* 3. DYNAMIC LOGIN PORTALS */}
-        {/* Catches: /portal/voter, /portal/admin, /portal/candidate, etc. */}
         <Route path="/portal/:role" element={<RoleLogin />} />
 
+        {/* 4. PROTECTED DASHBOARDS */}
+        <Route path="/admin-dashboard" element={user ? <AdminDashboard /> : <Navigate to="/" />} />
+        <Route path="/voter-dashboard" element={user ? <VoterDashboard /> : <Navigate to="/" />} />
 
-        {/* ==============================
-            PROTECTED ROUTES (Dashboards)
-        ============================== */}
-        
-        <Route 
-          path="/admin-dashboard" 
-          element={user ? <AdminDashboard /> : <Navigate to="/" />} 
-        />
-        
-        <Route 
-          path="/voter-dashboard" 
-          element={user ? <VoterDashboard /> : <Navigate to="/" />} 
-        />
-
-        {/* ==============================
-            FALLBACK (404)
-        ============================== */}
-        {/* If route doesn't exist, go back to Portal */}
+        {/* Fallback */}
         <Route path="*" element={<Navigate to="/" />} />
-
       </Routes>
     </BrowserRouter>
   );

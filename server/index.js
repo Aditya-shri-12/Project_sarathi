@@ -5,6 +5,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
+const rateLimit = require('express-rate-limit');
 
 // IMPORT ROUTES
 const authRoute = require('./routes/auth');
@@ -13,6 +14,20 @@ const electionRoute = require('./routes/election'); // <--- This was likely miss
 dotenv.config();
 
 const app = express();
+
+// 🛡️ SECURITY: Brute Force Protection
+// If someone tries to login 5 times and fails, block them for 15 mins.
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // Limit each IP to 5 requests per window
+  message: { error: "⛔ Too many login attempts. Access blocked for 15 minutes." },
+  standardHeaders: true, 
+  legacyHeaders: false,
+});
+
+// Apply ONLY to the login route
+app.use("/api/auth/login", loginLimiter);
+
 
 // MIDDLEWARE
 app.use(express.json());
