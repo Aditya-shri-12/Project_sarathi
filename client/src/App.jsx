@@ -1,32 +1,56 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Header from "./components/Header";
-import HomePage from "./pages/Home";
-import LoginPage from "./pages/login";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+
+// 1. IMPORT ALL PAGES
+import Login from "./pages/Login";       // (Optional: If you still use generic login)
+import Signup from "./pages/Signup";
+import AdminDashboard from "./pages/AdminDashboard";
 import VoterDashboard from "./pages/VoterDashboard";
-import AdminDashboard from "./pages/AdminDashboard"; // <--- 1. IMPORT THIS
-import VoterRegister from "./pages/VoterRegister";
+import Portal from "./pages/Portal";     // <--- The 5-Card Home Page
+import RoleLogin from "./pages/RoleLogin"; // <--- The "Universal" Login Page we made
 
 function App() {
+  // Simple auth check (In real app, check context/state)
+  const user = localStorage.getItem("user"); 
+
   return (
     <BrowserRouter>
-      <Header />
-      <div className="min-h-screen bg-slate-50">
-        <Routes>
-          <Route path="/" element={<HomePage />} />
+      <Routes>
+        {/* ==============================
+            PUBLIC ROUTES
+        ============================== */}
+        
+        {/* 1. HOME PAGE (The 5-Card Portal) */}
+        <Route path="/" element={<Portal />} />
 
-          <Route path="/login" element={<LoginPage />} /> 
-          
-          {/* Voter Registration Route */}
-          <Route path="/register" element={<VoterRegister />} />
-          
-          {/* Voter Route */}
-          <Route path="/nominee/dashboard" element={<VoterDashboard />} />
+        {/* 2. REGISTRATION (New Residents) */}
+        <Route path="/signup" element={<Signup />} />
 
-          {/* Admin Route */}
-          <Route path="/committee/dashboard" element={<AdminDashboard />} /> {/* <--- 2. ADD THIS */}
-          
-        </Routes>
-      </div>
+        {/* 3. DYNAMIC LOGIN PORTALS */}
+        {/* Catches: /portal/voter, /portal/admin, /portal/candidate, etc. */}
+        <Route path="/portal/:role" element={<RoleLogin />} />
+
+
+        {/* ==============================
+            PROTECTED ROUTES (Dashboards)
+        ============================== */}
+        
+        <Route 
+          path="/admin-dashboard" 
+          element={user ? <AdminDashboard /> : <Navigate to="/" />} 
+        />
+        
+        <Route 
+          path="/voter-dashboard" 
+          element={user ? <VoterDashboard /> : <Navigate to="/" />} 
+        />
+
+        {/* ==============================
+            FALLBACK (404)
+        ============================== */}
+        {/* If route doesn't exist, go back to Portal */}
+        <Route path="*" element={<Navigate to="/" />} />
+
+      </Routes>
     </BrowserRouter>
   );
 }

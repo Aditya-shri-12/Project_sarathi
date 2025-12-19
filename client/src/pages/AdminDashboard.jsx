@@ -3,6 +3,7 @@ import axios from "../lib/axios";
 import { motion, AnimatePresence } from "framer-motion";
 import { FiPlus, FiBarChart2, FiUsers, FiRefreshCw } from "react-icons/fi";
 import CreateElectionForm from "../components/Createelectionform";
+import PendingUsers from "../components/PendingUsers";
 
 const AdminDashboard = () => {
   const [showModal, setShowModal] = useState(false);
@@ -48,7 +49,9 @@ const AdminDashboard = () => {
             <FiPlus /> Create Election
           </button>
         </div>
+        <PendingUsers />
 
+        {/* MAIN CONTENT */}
         <div className="grid md:grid-cols-2 gap-8">
           
           {/* LEFT: ACTIVE ELECTIONS LIST */}

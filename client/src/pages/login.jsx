@@ -137,7 +137,7 @@ const Login = () => {
         {/* --- ADD THIS FOOTER --- */}
         <div className="bg-slate-50 p-4 text-center text-sm text-slate-500 border-t border-slate-100">
           New Resident?{" "}
-          <Link to="/register" className="text-blue-600 font-bold hover:underline">
+          <Link to="/signup" className="text-blue-600 font-bold hover:underline">
             Claim your account
           </Link>
         </div>

@@ -1,25 +1,47 @@
 const mongoose = require('mongoose');
 
 const UserSchema = new mongoose.Schema({
-  username: {
+  // CORE IDENTITY
+  username: { 
+    type: String, 
+    required: true, 
+    unique: true 
+  },
+  password: { 
+    type: String, 
+    required: true, 
+  },
+  
+  // SOCIETY DETAILS
+  flatNumber: {
+    type: String,
+    required: true,
+    unique: true // Prevents 2 people claiming the same flat
+  },
+  email: {
     type: String,
     required: true,
     unique: true
   },
-  password: {
+
+  // PERMISSIONS
+  isAdmin: { 
+    type: Boolean, 
+    default: false, 
+  },
+  
+  // THE NEW "DIGITAL BOUNCER" STATUS 🛡️
+  status: {
     type: String,
-    required: true,
+    enum: ['pending', 'active', 'rejected'],
+    default: 'pending' // Everyone starts here!
   },
-  isAdmin: {
-    type: Boolean,
-    default: false,
-  },
-  // 👇 THIS WAS MISSING! 👇
-  // This is the memory list of elections this user has voted in.
-  votedElections: [{
-    type: mongoose.Schema.Types.ObjectId,
+
+  // VOTING HISTORY
+  votedElections: [{ 
+    type: mongoose.Schema.Types.ObjectId, 
     ref: 'Election',
-    default: [] // Important: Start with an empty list, not 'undefined'
+    default: [] 
   }]
 }, { timestamps: true });
 

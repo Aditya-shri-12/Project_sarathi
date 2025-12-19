@@ -34,6 +34,7 @@ connectDB();
 app.use('/api/vote', voteRoute);
 app.use('/api/auth', authRoute);
 app.use('/api/election', electionRoute); // <--- This activates the election routes
+app.use("/api/ai", require("./routes/ai")); // AI Route
 
 // TEST ROUTE
 app.get('/', (req, res) => {

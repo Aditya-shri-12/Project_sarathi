@@ -3,6 +3,7 @@ import axios from "../lib/axios";
 import { motion, AnimatePresence } from "framer-motion";
 import { FiCheckCircle, FiClock, FiAlertCircle, FiX } from "react-icons/fi";
 import AES from 'crypto-js/aes'; // <--- Import Encryption
+import AIAssistant from "../components/AIAssistant"; // AI Component
 
 const VoterDashboard = () => {
   const [elections, setElections] = useState([]);
