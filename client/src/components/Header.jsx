@@ -5,7 +5,17 @@ import { FiLogOut } from "react-icons/fi";
 const Header = () => {
   const navigate = useNavigate();
   // Check if a user is saved in memory
-  const user = JSON.parse(localStorage.getItem("user"));
+  const getUser = () => {
+    try {
+      const userStr = localStorage.getItem("user");
+      return userStr ? JSON.parse(userStr) : null;
+    } catch (err) {
+      console.error("Error parsing user data:", err);
+      localStorage.removeItem("user");
+      return null;
+    }
+  };
+  const user = getUser();
 
   const handleLogout = () => {
     localStorage.removeItem("user"); // Clear memory

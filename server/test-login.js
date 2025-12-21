@@ -1,27 +1,31 @@
-// test-login.js
+// test-login.js - Test login API endpoint with Supabase
+require('dotenv').config();
+
 async function testLogin() {
-  console.log("⏳ Trying to log in...");
+  console.log("⏳ Testing login endpoint...");
 
   try {
     const response = await fetch('http://localhost:5000/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        username: "Arpit_Admin", // Use the name that is ALREADY in the database
-        password: "MySecretPassword123" // The password you used first
+        email: "admin@example.com", // Use email (Supabase uses email, not username)
+        password: "YourPassword123"
       })
     });
 
-    // Check if the server says "200 OK" or "400 Error"
-   if (response.ok) {
-        const data = await response.json(); 
-        // Note: We need to make sure auth.js sends back the whole user object, 
-        // OR we can just register a new user to see the ID.
-        console.log("✅ LOGIN SUCCESS!");
-        console.log("YOUR USER ID IS:", data._id); // <--- We need this!
+    const data = await response.json();
+
+    if (response.ok) {
+      console.log("✅ LOGIN SUCCESS!");
+      console.log("Token:", data.token);
+      console.log("Role:", data.role);
+      console.log("User ID:", data.user?.id);
+      console.log("Username:", data.user?.name);
+      console.log("Email:", data.user?.email);
+      console.log("Verified:", data.user?.isVerified);
     } else {
-        const errorText = await response.json();
-        console.log("❌ LOGIN FAILED. Server said:", errorText);
+      console.log("❌ LOGIN FAILED. Server said:", data);
     }
 
   } catch (error) {
@@ -30,3 +34,4 @@ async function testLogin() {
 }
 
 testLogin();
+

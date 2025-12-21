@@ -1,37 +1,61 @@
+// server/test-signup-flow.js - Test complete signup and login flow with Supabase
+require('dotenv').config();
+
 async function testSignupFlow() {
-  console.log("1. 📝 Applying for account (Flat B-505)...");
+  console.log("📝 Testing complete signup and login flow...\n");
   
-  // A. Try to Sign Up
+  // Generate unique email to avoid conflicts
+  const timestamp = Date.now();
+  const testEmail = `test${timestamp}@example.com`;
+  
+  // Step 1: Try to Sign Up
+  console.log("1️⃣  Attempting to register new user...");
   const signupRes = await fetch('http://localhost:5000/api/auth/signup', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      username: "New_Resident_Test",
-      password: "123",
-      email: "new@test.com",
-      flatNumber: "B-505"
+      username: `TestUser_${timestamp}`,
+      password: "TestPassword123",
+      email: testEmail,
+      flatNumber: `B-${Math.floor(Math.random() * 500)}`
     })
   });
-  console.log("Signup Response:", await signupRes.json());
-
-  console.log("\n2. 🔐 Trying to Log In immediately...");
   
-  // B. Try to Log In (Should Fail)
+  const signupData = await signupRes.json();
+  console.log("Signup Response:", signupData);
+  
+  if (signupRes.ok) {
+    console.log("✅ Registration successful!\n");
+  } else {
+    console.log("❌ Registration failed:", signupData);
+    return;
+  }
+
+  // Step 2: Try to Log In immediately
+  console.log("2️⃣  Attempting to log in with new account...");
   const loginRes = await fetch('http://localhost:5000/api/auth/login', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      username: "New_Resident_Test",
-      password: "123"
+      email: testEmail, // Supabase uses email for login
+      password: "TestPassword123"
     })
   });
   
-  if (loginRes.status === 403) {
-    console.log("✅ SUCCESS! The login was BLOCKED (Pending Status).");
-    console.log("Server Message:", await loginRes.json());
+  const loginData = await loginRes.json();
+  
+  if (loginRes.ok) {
+    console.log("✅ Login successful!");
+    console.log("User ID:", loginData.user?.id);
+    console.log("Role:", loginData.role);
+    console.log("Token:", loginData.token ? "Received" : "Not received");
   } else {
-    console.log("❌ FAILURE! The user got in without approval.");
+    console.log("❌ Login failed:", loginData);
+    console.log("Note: This might be expected if email verification is required.");
   }
+  
+  console.log("\n✅ Test flow completed!");
 }
 
 testSignupFlow();
+

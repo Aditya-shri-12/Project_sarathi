@@ -27,7 +27,22 @@ const Signup = () => {
       setStatus("success");
     } catch (err) {
       setStatus("error");
-      setErrorMessage(err.response?.data || "Signup failed");
+      // Extract error message from response object
+      let errorMsg = "Signup failed";
+      if (err.response?.data) {
+        if (typeof err.response.data === 'string') {
+          errorMsg = err.response.data;
+        } else if (err.response.data.error) {
+          errorMsg = err.response.data.error;
+        } else if (err.response.data.message) {
+          errorMsg = err.response.data.message;
+        } else {
+          errorMsg = JSON.stringify(err.response.data);
+        }
+      } else if (err.message) {
+        errorMsg = err.message;
+      }
+      setErrorMessage(errorMsg);
     }
   };
 

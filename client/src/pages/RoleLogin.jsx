@@ -1,172 +1,119 @@
 import { useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import axios from "../lib/axios";
-import { FiShield, FiUser, FiUsers, FiUserCheck, FiArrowLeft, FiLock } from "react-icons/fi";
+import { useNavigate } from "react-router-dom"; 
+import axios from "axios";
 
 const RoleLogin = () => {
-  const { role } = useParams(); // Grabs 'admin', 'voter', 'candidate' from URL
-  const navigate = useNavigate();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState(null); 
   
-  const [formData, setFormData] = useState({ username: "", password: "" });
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate(); 
 
-  // 🎨 CONFIGURATION: Controls the look & feel for each portal
-  const portalConfig = {
-    admin: {
-      title: "Super Admin Portal",
-      color: "bg-red-700",
-      accent: "text-red-700",
-      icon: <FiShield className="text-5xl text-white" />,
-      desc: "Restricted Access. Authorized Personnel Only.",
-      placeholder: "Enter Admin Email"
-    },
-    committee: {
-      title: "Election Committee",
-      color: "bg-orange-600",
-      accent: "text-orange-600",
-      icon: <FiUsers className="text-5xl text-white" />,
-      desc: "Official Election Management Console.",
-      placeholder: "Committee ID"
-    },
-    candidate: {
-      title: "Candidate Access",
-      color: "bg-purple-600",
-      accent: "text-purple-600",
-      icon: <FiUserCheck className="text-5xl text-white" />,
-      desc: "Manage your campaign and manifesto.",
-      placeholder: "Username"
-    },
-    voter: {
-      title: "Voter Booth",
-      color: "bg-blue-600",
-      accent: "text-blue-600",
-      icon: <FiUser className="text-5xl text-white" />,
-      desc: "Secure Voting Interface.",
-      placeholder: "Username or Flat Number"
-    }
-  };
-
-  // Fallback to 'voter' style if URL is weird
-  const currentConfig = portalConfig[role] || portalConfig.voter; 
-
-  const handleSubmit = async (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    setError("");
-    setLoading(true);
-    
+    setError(null); 
+
     try {
-      // 1. Send Credentials to Backend
-      const res = await axios.post("/api/auth/login", formData);
-      
-      // 2. Security Check Complete - Save Token/User
-      localStorage.setItem("user", JSON.stringify(res.data));
-      
-      // 3. Intelligent Redirect
-      // If a Super Admin logs in via the "Voter" door, we still send them to Admin Dashboard
-      if (res.data.isAdmin) {
-        navigate("/admin-dashboard");
-      } else {
-        navigate("/voter-dashboard");
+      const res = await axios.post("http://localhost:5000/api/auth/login", {
+        email: email,
+        password: password
+      });
+
+      if (res.data.success) {
+        localStorage.setItem("token", res.data.token);
+        localStorage.setItem("role", res.data.role || "voter");
+        // Store user data for dashboard
+        if (res.data.user) {
+          localStorage.setItem("user", JSON.stringify({
+            id: res.data.user.id,
+            username: res.data.user.name,
+            email: res.data.user.email,
+            isVerified: res.data.user.isVerified,
+            votedElections: []
+          }));
+        }
+        navigate("/voter-dashboard"); 
       }
 
     } catch (err) {
-      // Show error message from backend (e.g., "Account Pending" or "Wrong Password")
-      setError(err.response?.data || "Authentication failed. Please check credentials.");
-    } finally {
-      setLoading(false);
+      console.error("Login Error Details:", err);
+      let errorMessage = "Login Failed";
+
+      if (err.response && err.response.data) {
+        errorMessage = err.response.data.message || 
+                       err.response.data.error || 
+                       JSON.stringify(err.response.data);
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      setError(errorMessage); 
     }
   };
 
   return (
-    <div className="min-h-screen flex bg-white font-sans">
-      
-      {/* LEFT SIDE: Brand Identity (Hidden on Mobile) */}
-      <div className={`hidden md:flex w-1/2 ${currentConfig.color} flex-col items-center justify-center p-12 text-white relative transition-all duration-500`}>
-        <button 
-          onClick={() => navigate('/')} 
-          className="absolute top-8 left-8 flex items-center gap-2 text-white/80 hover:text-white font-semibold transition-colors group"
-        >
-           <FiArrowLeft className="group-hover:-translate-x-1 transition-transform" /> Back to Portal
-        </button>
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+      <div className="max-w-md w-full bg-white rounded-xl shadow-lg p-8 border border-gray-100">
         
-        <div className="mb-8 p-6 bg-white/20 rounded-full backdrop-blur-sm shadow-xl ring-4 ring-white/10">
-          {currentConfig.icon}
-        </div>
-        
-        <h1 className="text-4xl font-extrabold mb-4 tracking-tight">{currentConfig.title}</h1>
-        <p className="text-lg text-white/90 text-center max-w-md font-medium leading-relaxed">
-          {currentConfig.desc}
-        </p>
-
-        {/* Security Badge */}
-        <div className="absolute bottom-8 flex items-center gap-2 opacity-60 text-sm">
-          <FiLock /> 256-bit AES Encryption Active
-        </div>
-      </div>
-
-      {/* RIGHT SIDE: Secure Login Form */}
-      <div className="w-full md:w-1/2 flex items-center justify-center p-8 bg-slate-50">
-        <div className="max-w-md w-full bg-white p-10 rounded-2xl shadow-xl border border-slate-100">
-          
-          {/* Mobile Header (Only for small screens) */}
-          <div className="md:hidden text-center mb-8">
-             <div className={`inline-flex p-4 rounded-full ${currentConfig.color} text-white mb-4 shadow-lg`}>
-                {currentConfig.icon}
-             </div>
-             <h2 className={`text-2xl font-bold ${currentConfig.accent}`}>
-               {currentConfig.title}
-             </h2>
+        {/* Header Section with Emoji */}
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-100 text-3xl mb-4">
+            🛡️
           </div>
+          <h2 className="text-2xl font-bold text-gray-900">Voter Login</h2>
+          <p className="text-gray-500 text-sm mt-2">Enter your credentials to access the voting booth</p>
+        </div>
 
-          <h3 className="text-2xl font-bold text-slate-800 mb-2">Welcome Back</h3>
-          <p className="text-slate-500 mb-8">Please authenticate to continue.</p>
-          
-          {error && (
-            <div className="mb-6 p-4 bg-red-50 text-red-700 text-sm rounded-xl border border-red-100 flex items-start gap-2 animate-pulse">
-              <span className="font-bold">⚠️</span> {error}
-            </div>
-          )}
+        {/* Error Message Box */}
+        {error && (
+          <div className="mb-6 p-4 rounded-lg bg-red-50 border border-red-200 text-red-600 text-sm flex items-center gap-2">
+            <span className="font-bold">Error:</span> {error}
+          </div>
+        )}
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <label className="block text-sm font-bold text-slate-700 mb-2">Identity</label>
-              <input 
-                className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition-all bg-slate-50 hover:bg-white"
-                placeholder={currentConfig.placeholder}
-                value={formData.username}
-                onChange={(e) => setFormData({...formData, username: e.target.value})}
+        <form onSubmit={handleLogin} className="space-y-6">
+          {/* Email Input */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+            <div className="relative">
+              <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">👤</span>
+              <input
+                type="email"
                 required
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                placeholder="voter@society.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
               />
             </div>
-            
-            <div>
-              <label className="block text-sm font-bold text-slate-700 mb-2">Password</label>
-              <input 
+          </div>
+
+          {/* Password Input */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+            <div className="relative">
+              <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">🔒</span>
+              <input
                 type="password"
-                className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition-all bg-slate-50 hover:bg-white"
-                placeholder="••••••••"
-                value={formData.password}
-                onChange={(e) => setFormData({...formData, password: e.target.value})}
                 required
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
               />
             </div>
-
-            <button 
-              type="submit"
-              disabled={loading}
-              className={`w-full py-4 text-white font-bold text-lg rounded-xl shadow-lg hover:shadow-xl hover:opacity-95 transform active:scale-[0.99] transition-all flex items-center justify-center gap-2 ${currentConfig.color}`}
-            >
-              {loading ? "Verifying..." : "Authenticate Access"}
-            </button>
-          </form>
-          
-          <div className="mt-8 pt-6 border-t border-slate-100 text-center">
-             <p className="text-xs text-slate-400 uppercase tracking-widest font-semibold">
-               Sarthi Secure Gateway • v1.0
-             </p>
           </div>
-        </div>
+
+          <button
+            type="submit"
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg shadow-md"
+          >
+            Access Dashboard
+          </button>
+        </form>
+
+        <p className="mt-8 text-center text-sm text-gray-500">
+          Not registered? <a href="/register" className="text-blue-600 hover:underline font-medium">Contact Committee</a>
+        </p>
       </div>
     </div>
   );

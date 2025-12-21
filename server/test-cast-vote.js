@@ -1,16 +1,22 @@
-// server/test-cast-vote.js
+// server/test-cast-vote.js - Test voting API endpoint with Supabase
+require('dotenv').config();
 
 async function castVote() {
-  console.log("⏳ Casting vote...");
+  console.log("⏳ Testing vote casting...");
 
-  // 👇 PASTE YOUR COPIED IDS HERE 👇
-  const myUserId = "6929f6da6cb552154851e8bf";      
-  const myElectionId = "6929ec357ee0cc1cdf2dc686"; 
+  // 👇 UPDATE THESE VALUES WITH ACTUAL IDs FROM YOUR DATABASE 👇
+  // Run test-get-elections.js first to get election IDs
+  // Check your Supabase dashboard to get candidate IDs
+  const myUserId = "YOUR_USER_UUID_HERE";       // Replace with actual user UUID from Supabase
+  const candidateId = "YOUR_CANDIDATE_UUID_HERE"; // Replace with actual candidate UUID
+  const electionId = "YOUR_ELECTION_UUID_HERE";   // Replace with actual election UUID
+  const position = "Society Secretary 2025";      // Election title/position
 
   const voteData = {
     userId: myUserId,
-    electionId: myElectionId,
-    encryptedVote: "Encrypted_Vote_For_Sharma" 
+    candidateId: candidateId,
+    electionId: electionId,
+    position: position
   };
 
   try {
@@ -23,9 +29,12 @@ async function castVote() {
     const data = await response.json();
 
     if (response.ok) {
-      console.log("✅ SUCCESS:", data);
+      console.log("✅ SUCCESS! Vote cast:", data);
     } else {
       console.log("❌ FAILED:", data);
+      if (data.error) {
+        console.log("Error details:", data.error);
+      }
     }
 
   } catch (error) {
@@ -34,3 +43,4 @@ async function castVote() {
 }
 
 castVote();
+

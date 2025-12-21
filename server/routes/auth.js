@@ -1,112 +1,224 @@
-const router = require('express').Router();
-const User = require('../models/user');
+const express = require('express');
+const router = express.Router();
+const supabase = require('../lib/supabase');
 
-// PERFECT SIGNUP ROUTE (VIP Email Check)
-router.post('/signup', async (req, res) => {
+// ==========================================
+// 1. REGISTER/SIGNUP ROUTE (New Users)
+// ==========================================
+router.post('/register', async (req, res) => {
+  const { email, password, username, flatNumber } = req.body;
+
   try {
-    const { username, password, flatNumber, email } = req.body;
-
-    // 1. Check Duplicates
-    const existingUser = await User.findOne({ 
-      $or: [{ email: email }, { flatNumber: flatNumber }, { username: username }] 
-    });
-
-    if (existingUser) {
-      return res.status(400).json("User details already exist!");
-    }
-
-    // 2. THE SECURITY CHECK 🛡️
-    // We check if the email matches the Secret VIP Email in .env
-    const isSuperAdmin = email === process.env.SUPER_ADMIN_EMAIL;
-
-    // 3. Set Status based on the check
-    const roleStatus = isSuperAdmin ? 'active' : 'pending';
-    const roleAdmin = isSuperAdmin ? true : false;
-
-    // 4. Create User
-    const newUser = new User({
-      username,
-      password,
-      flatNumber,
+    // 1. Sign up user in Supabase Auth
+    const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
-      status: roleStatus,
-      isAdmin: roleAdmin
+      password,
     });
 
-    await newUser.save();
+    if (authError) return res.status(400).json({ error: authError.message });
 
-    // 5. Response
-    if (isSuperAdmin) {
-      res.status(200).json("Welcome Founder! Admin Access Granted.");
+    // 2. Insert into 'profiles' table
+    if (authData.user) {
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert([
+          {
+            id: authData.user.id,
+            email: email,
+            username: username,
+            flat_number: flatNumber,
+            role: 'resident', // Default role
+            is_verified: false
+          }
+        ]);
+
+      if (profileError) {
+        console.error("Profile Creation Error:", profileError);
+        return res.status(400).json({ 
+          error: profileError.message || "Failed to create user profile. Please contact support." 
+        });
+      }
+    }
+
+    res.status(201).json({ message: "Registration successful! Check your email." });
+
+  } catch (err) {
+    console.error("Register Error:", err);
+    res.status(500).json({ error: "Server Error during registration" });
+  }
+});
+
+// Alias for /register (some clients use /signup)
+router.post('/signup', async (req, res) => {
+  const { email, password, username, flatNumber } = req.body;
+
+  // Validate required fields
+  if (!email || !password || !username || !flatNumber) {
+    return res.status(400).json({ 
+      error: "All fields are required: email, password, username, and flatNumber" 
+    });
+  }
+
+  // Basic email validation
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    return res.status(400).json({ error: "Invalid email format" });
+  }
+
+  // Password length validation
+  if (password.length < 6) {
+    return res.status(400).json({ error: "Password must be at least 6 characters long" });
+  }
+
+  try {
+    // 1. Sign up user in Supabase Auth
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email,
+      password,
+    });
+
+    if (authError) {
+      console.error("Supabase Auth Error:", authError);
+      return res.status(400).json({ error: authError.message || "Registration failed" });
+    }
+
+    // 2. Insert into 'profiles' table
+    if (authData.user) {
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert([
+          {
+            id: authData.user.id,
+            email: email,
+            username: username,
+            flat_number: flatNumber,
+            role: 'resident', // Default role
+            is_verified: false
+          }
+        ]);
+
+      if (profileError) {
+        console.error("Profile Creation Error:", profileError);
+        return res.status(400).json({ 
+          error: profileError.message || "Failed to create user profile. Please contact support." 
+        });
+      }
     } else {
-      res.status(200).json("Request Submitted! Wait for Approval.");
+      return res.status(400).json({ error: "User account creation failed. Please try again." });
     }
 
+    res.status(201).json({ message: "Registration successful! Check your email." });
+
   } catch (err) {
-    res.status(500).json(err.message);
+    console.error("Signup Error:", err);
+    res.status(500).json({ error: "Server Error during registration" });
   }
 });
 
-// 2. SECURE LOGIN (Enterprise Grade)
+// ==========================================
+// 2. GENERAL LOGIN (For Voters/Residents)
+// ==========================================
 router.post('/login', async (req, res) => {
+  const { email, password } = req.body;
+
   try {
-    // 1. Find User
-    const user = await User.findOne({ 
-      // Allow logging in with either Username OR Email
-      $or: [{ username: req.body.username }, { email: req.body.username }]
+    // 1. Ask Supabase to sign in
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
     });
 
-    if (!user) return res.status(404).json("User not found!");
+    if (authError) return res.status(400).json({ error: "Invalid credentials" });
 
-    // 2. STATUS CHECK (The Gatekeeper)
-    if (user.status === 'pending') {
-      return res.status(403).json("ACCOUNT PENDING: Please wait for Committee approval.");
-    }
-    if (user.status === 'rejected') {
-      return res.status(403).json("ACCESS DENIED: Your account has been suspended.");
-    }
+    // 2. Fetch user profile
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', authData.user.id)
+      .single();
 
-    // 3. PASSWORD CHECK (Mandatory for Everyone)
-    // In a real production app, use bcrypt.compare(req.body.password, user.password)
-    if (user.password !== req.body.password) {
-      return res.status(400).json("Invalid Credentials!");
-    }
+    if (profileError) return res.status(400).json({ error: "Profile not found" });
 
-    // 4. SUCCESS
-    // Remove password from the data we send back
-    const { password, ...others } = user._doc;
-    res.status(200).json(others);
+    // 3. Send success
+    res.status(200).json({
+      success: true,
+      message: "Login successful",
+      token: authData.session.access_token,
+      role: profile.role, // Frontend uses this to redirect
+      user: {
+        id: profile.id,
+        name: profile.username,
+        email: profile.email,
+        isVerified: profile.is_verified
+      }
+    });
 
   } catch (err) {
-    res.status(500).json(err.message);
+    console.error("Login Error:", err);
+    res.status(500).json({ error: "Server Error" });
   }
 });
 
-// 3. ADMIN: Get Pending Requests
-router.get('/pending-users', async (req, res) => {
-  try {
-    // Only fetch users who are waiting
-    const pendingList = await User.find({ status: 'pending' });
-    res.status(200).json(pendingList);
-  } catch (err) {
-    res.status(500).json(err.message);
-  }
-});
+// ==========================================
+// 3. ADMIN LOGIN (Debug Version)
+// ==========================================
+router.post('/admin-login', async (req, res) => {
+  const { email, password } = req.body;
+  
+  console.log("-----------------------------------------");
+  console.log("👉 ADMIN LOGIN ATTEMPT:");
+  console.log("📧 Email:", email);
+  console.log("🔑 Password:", password); // (Don't show this in production!)
 
-// 4. ADMIN: Approve or Reject
-router.put('/update-status/:id', async (req, res) => {
   try {
-    const { status } = req.body; // Expecting 'active' or 'rejected'
-    
-    const updatedUser = await User.findByIdAndUpdate(
-      req.params.id, 
-      { status: status },
-      { new: true }
-    );
-    
-    res.status(200).json(updatedUser);
+    // 1. Authenticate with Supabase
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (authError) {
+      console.log("❌ Supabase Auth Failed:", authError.message);
+      return res.status(400).json({ message: "Wrong Password or Email" });
+    }
+
+    console.log("✅ Supabase Auth Success. User ID:", authData.user.id);
+
+    // 2. Check the Role in Database
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', authData.user.id)
+      .single();
+
+    if (profileError || !profile) {
+      console.log("❌ Profile Search Failed. Error:", profileError?.message);
+      return res.status(400).json({ message: "Admin profile not found in table" });
+    }
+
+    console.log("👤 Profile Found. Role is:", profile.role);
+
+    // 3. SECURITY CHECK
+    if (profile.role !== 'admin') {
+      console.log("⛔ Access Denied: User is a", profile.role);
+      return res.status(403).json({ 
+        success: false, 
+        message: "ACCESS DENIED. You are not an Administrator." 
+      });
+    }
+
+    // 4. Success
+    console.log("🎉 Login Successful!");
+    res.status(200).json({
+      success: true,
+      message: "Welcome Admin",
+      token: authData.session.access_token,
+      role: 'admin'
+    });
+
   } catch (err) {
-    res.status(500).json(err.message);
+    console.error("🔥 Server Error:", err);
+    res.status(500).json({ message: "Server Error" });
   }
 });
 

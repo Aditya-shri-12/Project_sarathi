@@ -16,20 +16,35 @@ const VoterDashboard = () => {
   const [votingStatus, setVotingStatus] = useState("idle"); // idle, encrypting, success, error
 
   useEffect(() => {
-    const storedUser = JSON.parse(localStorage.getItem("user"));
-    setUser(storedUser);
+    const storedUserStr = localStorage.getItem("user");
+    if (storedUserStr) {
+      try {
+        const storedUser = JSON.parse(storedUserStr);
+        setUser(storedUser);
+      } catch (err) {
+        console.error("Error parsing user data:", err);
+        localStorage.removeItem("user");
+      }
+    }
     fetchElections();
   }, []);
 
   const fetchElections = async () => {
     try {
-      const res = await axios.get("/api/election/all");
+      const res = await axios.get("/api/elections/all");
       setElections(res.data);
     } catch (err) {
       console.error("Error:", err);
     } finally {
       setLoading(false);
     }
+  };
+
+  // Helper function to check if user has voted (handles UUID strings)
+  const hasVoted = (electionId) => {
+    if (!user?.votedElections || !electionId) return false;
+    const electionIdStr = electionId.toString();
+    return user.votedElections.some(id => id.toString() === electionIdStr);
   };
 
   // --- THE VOTING LOGIC ---
@@ -46,26 +61,49 @@ const VoterDashboard = () => {
         "MY_SECRET_KEY"
       ).toString();
 
-      // 2. Send the locked envelope to backend
+      // 2. Send vote to backend - use candidateId and electionId/position
+      // Use election id or _id (for backward compatibility) and candidate id
+      const electionId = selectedElection.id || selectedElection._id;
+      const candidateId = selectedCandidate.id;
+      
       await axios.post("/api/vote/cast", {
-        userId: user._id,
-        electionId: selectedElection._id,
-        encryptedVote: encryptedVote
+        userId: user.id, // Use 'id' instead of '_id' for Supabase UUID
+        candidateId: candidateId,
+        electionId: electionId,
+        position: selectedElection.title || selectedElection.position,
+        encryptedVote: encryptedVote // Optional, for audit trail
       });
 
       setVotingStatus("success");
+      
+      // Refresh user data and elections after successful vote
+      try {
+        // Update user's votedElections in local state
+        const updatedUser = { ...user };
+        const electionId = selectedElection.id || selectedElection._id;
+        updatedUser.votedElections = [...(user.votedElections || []), electionId];
+        setUser(updatedUser);
+        localStorage.setItem("user", JSON.stringify(updatedUser));
+        
+        // Refresh elections list
+        await fetchElections();
+      } catch (refreshErr) {
+        console.error("Error refreshing data:", refreshErr);
+      }
       
       // Close modal after 2 seconds
       setTimeout(() => {
         setSelectedElection(null);
         setSelectedCandidate(null);
         setVotingStatus("idle");
-        // Optional: Refresh elections to disable button (if backend supports it)
       }, 2000);
 
     } catch (err) {
       setVotingStatus("error");
-      alert(err.response?.data || "Voting Failed");
+      const errorMsg = err.response?.data?.error || err.response?.data?.message || err.message || "Voting Failed";
+      alert(errorMsg);
+      // Reset to idle after showing error
+      setTimeout(() => setVotingStatus("idle"), 2000);
     }
   };
 
@@ -77,9 +115,11 @@ const VoterDashboard = () => {
         </div>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {elections.map((election) => (
+          {elections.map((election) => {
+            const electionId = election.id || election._id; // Support both id and _id for backward compatibility
+            return (
             <motion.div
-              key={election._id}
+              key={electionId}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden"
@@ -92,7 +132,7 @@ const VoterDashboard = () => {
 
               {/* VOTE BUTTON */}
               <div className="p-6 bg-slate-50">
-                {user?.votedElections?.includes(election._id) ? (
+                {hasVoted(electionId) ? (
                    <button disabled className="w-full py-3 bg-emerald-100 text-emerald-700 font-bold rounded-lg flex items-center justify-center gap-2">
                      <FiCheckCircle /> Voted
                    </button>
@@ -106,7 +146,8 @@ const VoterDashboard = () => {
                 )}
               </div>
             </motion.div>
-          ))}
+            );
+          })}
         </div>
 
         {/* --- VOTING MODAL (The Ballot Paper) --- */}
@@ -129,9 +170,10 @@ const VoterDashboard = () => {
 
                 {/* Candidate List */}
                 <div className="p-6 space-y-3">
-                  {selectedElection.candidates.map((cand, idx) => (
+                  {selectedElection.candidates && selectedElection.candidates.length > 0 ? (
+                    selectedElection.candidates.map((cand, idx) => (
                     <div 
-                      key={idx}
+                      key={cand.id || idx}
                       onClick={() => setSelectedCandidate(cand)}
                       className={`p-4 rounded-lg border-2 cursor-pointer flex justify-between items-center transition-all ${
                         selectedCandidate === cand 
@@ -145,7 +187,10 @@ const VoterDashboard = () => {
                       </div>
                       {selectedCandidate === cand && <FiCheckCircle className="text-blue-500 text-xl" />}
                     </div>
-                  ))}
+                    ))
+                  ) : (
+                    <p className="text-center text-slate-500 py-4">No candidates available for this election.</p>
+                  )}
                 </div>
 
                 {/* Confirm Button */}

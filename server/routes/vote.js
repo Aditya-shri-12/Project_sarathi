@@ -1,94 +1,127 @@
-// server`/routes/vote.js
-const AES = require("crypto-js/aes"); // <--- Import Encryption
-const enc = require("crypto-js/enc-utf8"); // <--- Import Encoding
-const router = require('express').Router(); // We are creating a router for vote-related routes
-const Vote = require('../models/Vote'); // Import the Vote model
-const User = require('../models/user');// Import the User model
-const { route } = require('./auth');// Import express route
-const crypto = require('crypto');   // <--- Import crypto for generating unique hashes
+const express = require('express');
+const router = express.Router();
+const supabase = require('../lib/supabase');
 
-// POST /api/vote/cast
-// This route handles casting a vote
-
+// CAST VOTE ROUTE
 router.post('/cast', async (req, res) => {
-  const { userId, electionId, encryptedVote } = req.body;
+  // Support both old format (userId, candidateId, position) and new format (userId, electionId, encryptedVote)
+  const { userId, candidateId, position, electionId, encryptedVote } = req.body;
 
   try {
-    // 1. Check User
-    const user = await User.findById(userId);
-    if (!user) return res.status(404).json("User not found!");
+    let actualCandidateId = candidateId;
+    let actualPosition = position;
 
-    // 2. Check Double Voting
-    if (user.votedElections.includes(electionId)) {
-      return res.status(400).json("FRAUD ALERT: You have already voted!");
+    // If using new format (electionId), we need to find the candidate
+    if (electionId && !candidateId) {
+      // Find the candidate by election and encrypted vote data
+      // For now, we'll need candidateId from the client - this needs to be fixed in the client
+      return res.status(400).json({ error: "candidateId is required" });
     }
 
-    // 3. GENERATE UNIQUE HASH (The Fix) 🛡️
-    // This creates a random 32-character string (e.g., "a1b2c3d4...")
-    const uniqueHash = crypto.randomBytes(16).toString('hex');
+    // If we have electionId, we should fetch the position from the election
+    if (electionId && !position) {
+      const { data: election, error: electionError } = await supabase
+        .from('elections')
+        .select('title')
+        .eq('id', electionId)
+        .single();
 
-    // 4. Create Vote with the Hash
-    const newVote = new Vote({
-      electionId: electionId,
-      encryptedVote: encryptedVote,
-      voteHash: uniqueHash // <--- WE ADDED THIS
-    });
-    
-    // 5. Save Everything
-    await newVote.save();
-    
-    user.votedElections.push(electionId);
-    await user.save();
-
-    res.status(200).json("Vote Cast Successfully! 🗳️");
-
-  } catch (err) {
-    // If we get a duplicate error again (very rare collision), tell the user to retry
-    if (err.code === 11000) {
-       return res.status(500).json("Error generating receipt. Please try again.");
+      if (electionError) throw electionError;
+      actualPosition = election.title;
     }
-    res.status(500).json(err.message);
-  }
-});
 
-// GET RESULTS (Admin Only)
-router.get('/results/:electionId', async (req, res) => {
-  try {
-    const { electionId } = req.params;
+    // 1. Try to record the vote in the 'votes' table
+    // The database has a rule: "One User, One Vote per Position/Election"
+    // If they already voted, this will fail automatically.
+    const voteData = {
+      voter_id: userId,
+      candidate_id: actualCandidateId,
+      position: actualPosition || electionId
+    };
 
-    // 1. Get all votes for this election
-    const votes = await Vote.find({ electionId: electionId });
+    const { data, error: voteError } = await supabase
+      .from('votes')
+      .insert([voteData]);
 
-    // 2. The Tally Map (e.g., { "Pizza": 10, "Burger": 5 })
-    const results = {};
-
-    // 3. Loop through every vote and decrypt it
-    votes.forEach((vote) => {
-      try {
-        // DECRYPT
-        const bytes = AES.decrypt(vote.encryptedVote, "MY_SECRET_KEY");
-        const candidateName = bytes.toString(enc);
-
-        // COUNT
-        if (candidateName) {
-          if (results[candidateName]) {
-            results[candidateName]++;
-          } else {
-            results[candidateName] = 1;
-          }
-        }
-      } catch (e) {
-        console.log("Failed to decrypt a vote (might be tampered)");
+    // If error says "duplicate key", it means they already voted
+    if (voteError) {
+      if (voteError.code === '23505') { // Postgres code for duplicate
+        return res.status(400).json({ error: "You have already voted for this position!" });
       }
-    });
+      throw voteError;
+    }
 
-    // 4. Send back the totals
-    res.status(200).json(results);
+    // 2. If vote was successful, increase the Candidate's vote count
+    // Fetch current count
+    const { data: candidate, error: candidateError } = await supabase
+      .from('candidates')
+      .select('vote_count')
+      .eq('id', actualCandidateId)
+      .single();
+
+    if (candidateError) {
+      console.error('Error fetching candidate:', candidateError);
+      // Don't fail the vote if we can't update count, but log it
+    } else {
+      // Update count
+      const newCount = (candidate.vote_count || 0) + 1;
+      
+      await supabase
+        .from('candidates')
+        .update({ vote_count: newCount })
+        .eq('id', actualCandidateId);
+    }
+
+    res.status(200).json({ message: "Vote cast successfully!" });
 
   } catch (err) {
-    res.status(500).json(err.message);
+    console.error('Vote casting error:', err);
+    res.status(500).json({ error: "Server Error casting vote: " + err.message });
   }
 });
 
+// GET VOTE RESULTS FOR AN ELECTION
+router.get('/results/:electionId', async (req, res) => {
+  const { electionId } = req.params;
+
+  try {
+    // Get the election
+    const { data: election, error: electionError } = await supabase
+      .from('elections')
+      .select('*')
+      .eq('id', electionId)
+      .single();
+
+    if (electionError) {
+      return res.status(404).json({ error: 'Election not found' });
+    }
+
+    // Get all candidates for this election
+    const { data: candidates, error: candidatesError } = await supabase
+      .from('candidates')
+      .select(`
+        *,
+        profiles:user_id ( username, flat_number )
+      `)
+      .eq('election_id', electionId)
+      .eq('status', 'approved');
+
+    if (candidatesError) throw candidatesError;
+
+    // Build results object in format expected by client: { "Candidate Name": voteCount }
+    const results = {};
+    
+    candidates.forEach(candidate => {
+      const candidateName = candidate.profiles?.username || 'Unknown';
+      results[candidateName] = candidate.vote_count || 0;
+    });
+
+    res.json(results);
+
+  } catch (err) {
+    console.error('Error fetching results:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
 
 module.exports = router;

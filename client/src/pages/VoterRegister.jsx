@@ -1,5 +1,5 @@
 import { useState } from "react";
-import axios from "../lib/axios";
+import axios from "axios"; 
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 
@@ -12,7 +12,7 @@ const VoterRegister = () => {
     flatNumber: ""
   });
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState(null); // Initialize as null
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -21,18 +21,32 @@ const VoterRegister = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setError("");
+    setError(null); // Clear previous errors
 
     try {
-      // Send data to the Bouncer
-      const res = await axios.post("/api/auth/register", formData);
+      // Make sure this URL matches your backend exactly!
+      const res = await axios.post("http://localhost:5000/api/auth/register", formData);
       
       alert("Registration Successful! Please Login.");
-      navigate("/login"); // Send them to login page
+      navigate("/portal/voter"); 
       
     } catch (err) {
-      // Show the error from the backend (e.g., "Access Denied")
-      setError(err.response?.data || "Registration failed.");
+      console.error("Registration Error:", err);
+      
+      // --- CRASH PROOF FIX ---
+      // We extract the string message safely.
+      let errorMessage = "Registration failed";
+
+      if (err.response && err.response.data) {
+        // If the server sends { error: "User already exists" } or { message: "..." }
+        errorMessage = err.response.data.message || 
+                       err.response.data.error || 
+                       JSON.stringify(err.response.data); // Fallback to string
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+
+      setError(errorMessage); // Now it is definitely a string
     } finally {
       setLoading(false);
     }
@@ -53,6 +67,7 @@ const VoterRegister = () => {
         <div className="p-8">
           <form onSubmit={handleSubmit} className="space-y-4">
             
+            {/* Safe Error Display */}
             {error && (
               <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg border border-red-200">
                 {error}
@@ -107,7 +122,7 @@ const VoterRegister = () => {
 
           <div className="mt-6 text-center text-sm text-slate-500">
             Already registered?{" "}
-            <Link to="/login" className="text-blue-600 font-bold hover:underline">
+            <Link to="/portal/voter" className="text-blue-600 font-bold hover:underline">
               Login here
             </Link>
           </div>

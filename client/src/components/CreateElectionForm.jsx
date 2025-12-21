@@ -43,7 +43,7 @@ const CreateElectionForm = ({ onClose, onSuccess }) => {
     e.preventDefault();
     setLoading(true);
     try {
-      await axios.post("/api/election/create", formData);
+      await axios.post("/api/elections/create", formData);
       alert("Election Created Successfully! 🎉");
       onSuccess(); // Refresh the dashboard
       onClose();   // Close the modal

@@ -1,148 +1,102 @@
 import { useState } from "react";
-import axios from "../lib/axios";
-import { useNavigate, Link } from "react-router-dom"; // <--- Both imports in one line
-import { motion } from "framer-motion";
-
+// We don't need useNavigate anymore because we are using window.location for a hard refresh
+// import { useNavigate } from "react-router-dom"; 
+import axios from "axios";
 
 const Login = () => {
-  const [activeTab, setActiveTab] = useState("voter"); // 'voter' or 'admin'
-  const [formData, setFormData] = useState({ username: "", password: "" });
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const navigate = useNavigate();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  
+  // Initialize error as null so it doesn't show an empty box
+  const [error, setError] = useState(null); 
+  
+  // const navigate = useNavigate(); // Removed to use window.location instead
 
-  // Handle typing in boxes
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
-
-  // Handle the "Sign In" button click
-  const handleSubmit = async (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    setLoading(true);
-    setError("");
+    setError(null); // Clear previous errors
 
     try {
-      // Send data to backend
-      const res = await axios.post("/api/auth/login", formData);
+      console.log("Sending request...");
       
-      // If success, save the user info to browser memory
-      // (res.data contains the User ID and info we sent from backend)
-      localStorage.setItem("user", JSON.stringify(res.data));
-      
-      alert("Login Successful! Welcome " + res.data.username);
-      
-      // Redirect based on who they are
-      if (activeTab === "admin") {
-        navigate("/committee/dashboard");
-      } else {
-        navigate("/nominee/dashboard");
+      // Make sure this URL matches your backend route exactly!
+      const res = await axios.post("http://localhost:5000/api/auth/admin-login", {
+        email: email,
+        password: password
+      });
+
+      console.log("Response:", res.data);
+
+      if (res.data.success) {
+        // 1. Save Token & Role
+        if(res.data.token) {
+          localStorage.setItem("token", res.data.token);
+          localStorage.setItem("role", res.data.role); // Save role just in case
+        }
+        
+        // 2. FORCE RELOAD (The Fix)
+        // This forces the App to refresh and check for the token again.
+        // It solves the issue where you log in but stay on the login page.
+        window.location.href = "/admin-dashboard";
       }
 
     } catch (err) {
-      // If backend says "Wrong Password", show it here
-      setError(err.response?.data || "Login failed. Check server.");
-    } finally {
-      setLoading(false);
+      console.error("Login Error:", err);
+
+      // --- CRASH PROOF ERROR HANDLING ---
+      // We force the error to be a string, no matter what the server sends.
+      let errorMessage = "Login Failed";
+
+      if (err.response && err.response.data) {
+        // If server sends { message: "..." } or { error: "..." }
+        errorMessage = err.response.data.message || 
+                       err.response.data.error || 
+                       JSON.stringify(err.response.data);
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+
+      // Now we are 100% sure 'errorMessage' is a STRING, not an object.
+      setError(errorMessage); 
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="bg-white w-full max-w-md rounded-xl shadow-xl overflow-hidden border border-slate-200"
-      >
+    <div className="flex justify-center items-center h-screen bg-gray-100">
+      <div className="bg-white p-8 rounded shadow-md w-96">
+        <h1 className="text-2xl font-bold mb-6 text-center text-gray-800">Admin Login</h1>
         
-        {/* --- TAB SWITCHER --- */}
-        <div className="flex border-b border-slate-200">
-          <button
-            onClick={() => setActiveTab("voter")}
-            className={`flex-1 py-4 text-sm font-bold transition-colors ${
-              activeTab === "voter" ? "bg-blue-600 text-white" : "bg-slate-50 text-slate-600 hover:bg-slate-100"
-            }`}
-          >
-            Voter Login
-          </button>
-          <button
-            onClick={() => setActiveTab("admin")}
-            className={`flex-1 py-4 text-sm font-bold transition-colors ${
-              activeTab === "admin" ? "bg-amber-500 text-white" : "bg-slate-50 text-slate-600 hover:bg-slate-100"
-            }`}
-          >
-            Committee Login
-          </button>
-        </div>
-
-        {/* --- LOGIN FORM --- */}
-        <div className="p-8">
-          <div className="text-center mb-8">
-            <h2 className="text-2xl font-bold text-slate-800">
-              {activeTab === "voter" ? "Welcome Voter" : "Admin Portal"}
-            </h2>
-            <p className="text-slate-500 text-sm">Enter your credentials to access secure voting.</p>
+        {/* Only show error if it exists */}
+        {error && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+            {/* This is safe now because 'error' is guaranteed to be a string */}
+            {error}
           </div>
+        )}
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            
-            {/* Error Message */}
-            {error && (
-              <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg border border-red-200 text-center">
-                {error}
-              </div>
-            )}
-
-            {/* Username Field */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Username</label>
-              <input
-                type="text"
-                name="username"
-                value={formData.username}
-                onChange={handleChange}
-                className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none"
-                placeholder="Enter your username"
-                required
-              />
-            </div>
-
-            {/* Password Field */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Password</label>
-              <input
-                type="password"
-                name="password"
-                value={formData.password}
-                onChange={handleChange}
-                className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none"
-                placeholder="••••••••"
-                required
-              />
-            </div>
-
-            {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={loading}
-              className={`w-full py-3 rounded-lg font-bold text-white transition-all ${
-                activeTab === "voter" ? "bg-blue-600 hover:bg-blue-700" : "bg-amber-500 hover:bg-amber-600"
-              }`}
-            >
-              {loading ? "Verifying..." : "Sign In"}
-            </button>
-          </form>
-        </div>
-
-        {/* --- ADD THIS FOOTER --- */}
-        <div className="bg-slate-50 p-4 text-center text-sm text-slate-500 border-t border-slate-100">
-          New Resident?{" "}
-          <Link to="/signup" className="text-blue-600 font-bold hover:underline">
-            Claim your account
-          </Link>
-        </div>
-
-      </motion.div>
+        <form onSubmit={handleLogin} className="flex flex-col gap-4">
+          <input
+            type="email"
+            placeholder="Admin Email"
+            className="border p-2 rounded w-full"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+          <input
+            type="password"
+            placeholder="Password"
+            className="border p-2 rounded w-full"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+          <button 
+            type="submit" 
+            className="bg-red-600 text-white p-2 rounded hover:bg-red-700 w-full font-bold"
+          >
+            LOGIN
+          </button>
+        </form>
+      </div>
     </div>
   );
 };
