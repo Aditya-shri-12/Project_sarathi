@@ -1,8 +1,11 @@
 import { useNavigate } from "react-router-dom";
 import { FiShield, FiUserCheck, FiLock, FiArrowRight } from "react-icons/fi";
+import HowItWorks from "../components/HowItWorks";
+import { useState } from "react";
 
 const LandingPage = () => {
   const navigate = useNavigate();
+  const [showHowItWorks, setShowHowItWorks] = useState(false);
 
   return (
     <div className="font-sans">
@@ -13,7 +16,13 @@ const LandingPage = () => {
           Saarthi <span className="text-xs font-normal text-slate-400 ml-1">by ASB CREATIONS</span>
         </div>
         <div className="flex gap-6 text-sm font-medium">
-          <button className="hover:text-amber-400 transition-colors">How It Works</button>
+          {/* The clickable text/button */}
+        <button 
+          onClick={() => setShowHowItWorks(true)} 
+          className="text-white hover:text-blue-400 font-medium transition cursor-pointer"
+        >
+         How It Works
+        </button>
           <button 
             onClick={() => navigate('/portal/voter')} // Quick Login
             className="text-amber-400 hover:text-amber-300"
@@ -90,6 +99,8 @@ const LandingPage = () => {
         &copy; 2025 ASB CREATIONS. Powered by MERN Stack & Google Gemini.
       </footer>
 
+      {/* The Popup itself */}
+      <HowItWorks isOpen={showHowItWorks} onClose={() => setShowHowItWorks(false)} />
     </div>
   );
 };

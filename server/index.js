@@ -47,6 +47,8 @@ app.use('/api/ai', aiRoute);
 // 5. Admin Route (Resident Approvals)
 app.use('/api/admin', adminRoute);
 
+
+
 // TEST ROUTE
 app.get('/', (req, res) => {
   res.send('Welcome to SARTHI Voting App - Backend Fully Online!');
