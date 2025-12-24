@@ -1,51 +1,74 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import LandingPage from "./pages/LandingPage";
-import Portal from "./pages/Portal";
-import RoleLogin from "./pages/RoleLogin";
-import Signup from "./pages/Signup";
-import AdminDashboard from "./pages/AdminDashboard";
-import VoterDashboard from "./pages/VoterDashboard";
 
-// ✅ IMPORT YOUR ADMIN LOGIN PAGE
-// Ensure the file name matches exactly what is in your src/pages folder
-import Login from "./pages/login"; 
+// --- PAGES IMPORT ---
+import LandingPage from "./pages/LandingPage";
+import Login from "./pages/login";             
+import VoterRegister from "./pages/VoterRegister"; 
+
+// --- DASHBOARDS IMPORT ---
+import AdminDashboard from "./pages/AdminDashboard";
+import ResidentDashboard from "./pages/ResidentDashboard";
+import CandidateDashboard from "./pages/CandidateDashboard";
+import NominationForm from "./pages/NominationForm"; 
 
 function App() {
-  const user = localStorage.getItem("token"); // Changed "user" to "token" (common practice)
+  // Simple check for login token
+  const isAuthenticated = !!localStorage.getItem("token"); 
 
   return (
     <BrowserRouter>
       <Routes>
-        {/* 1. HOME PAGE */}
-        <Route path="/" element={<LandingPage />} />
-
-        {/* 2. THE GRAND HALL (Role Selection) */}
-        <Route path="/portal" element={<Portal />} />
-
-        {/* 3. LOGIN & SIGNUP */}
-        <Route path="/signup" element={<Signup />} />
         
-        {/* ✅ ADDED: The Secret Admin Login Route */}
-        {/* Now if you type localhost:3000/secret-admin-access, it works! */}
-        <Route path="/secret-admin-access" element={<Login />} />
+        {/* 1. PUBLIC ROUTES */}
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<VoterRegister />} />
 
-        {/* Dynamic Route for Voter/Resident Login */}
-        <Route path="/portal/:role" element={<RoleLogin />} />
+        {/* --- 2. THE FIX: DIRECT ADMIN LOGIN URL --- */}
+        {/* If you type localhost:5173/admin, it goes to the Red Login Screen */}
+        <Route 
+          path="/admin" 
+          element={<Navigate to="/login" state={{ type: "admin", title: "Committee Portal" }} replace />} 
+        />
 
-        {/* 4. PROTECTED DASHBOARDS */}
-        {/* If no user token, redirect to landing page ("/") */}
+        {/* --- 3. PROTECTED ROUTES --- */}
+        
+        {/* ADMIN: If not logged in, go to RED login screen */}
         <Route 
           path="/admin-dashboard" 
-          element={user ? <AdminDashboard /> : <Navigate to="/secret-admin-access" />} 
+          element={
+            isAuthenticated ? <AdminDashboard /> : 
+            <Navigate to="/login" state={{ type: "admin", title: "Committee Portal" }} />
+          } 
         />
         
+        {/* RESIDENT: If not logged in, go to BLUE login screen */}
         <Route 
-          path="/voter-dashboard" 
-          element={user ? <VoterDashboard /> : <Navigate to="/portal/voter" />} 
+          path="/resident-dashboard" 
+          element={
+            isAuthenticated ? <ResidentDashboard /> : 
+            <Navigate to="/login" state={{ type: "resident", title: "Resident Login" }} />
+          } 
         />
 
-        {/* Fallback - Redirects unknown URLs to Home */}
+        {/* CANDIDATE: If not logged in, go to PURPLE login screen */}
+        <Route 
+          path="/candidate-dashboard" 
+          element={
+            isAuthenticated ? <CandidateDashboard /> : 
+            <Navigate to="/login" state={{ type: "resident", title: "Candidate Portal" }} />
+          } 
+        />
+
+        {/* FEATURES */}
+        <Route 
+          path="/nomination-form" 
+          element={isAuthenticated ? <NominationForm /> : <Navigate to="/login" />} 
+        />
+
+        {/* FALLBACK */}
         <Route path="*" element={<Navigate to="/" />} />
+
       </Routes>
     </BrowserRouter>
   );
