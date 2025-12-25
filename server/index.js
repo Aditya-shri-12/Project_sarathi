@@ -7,11 +7,13 @@ const rateLimit = require('express-rate-limit');
 
 // IMPORT ROUTES
 const authRoute = require('./routes/auth');
-// ✅ UPDATED: Points to the new 'elections.js' file (plural)
 const electionRoute = require('./routes/elections'); 
 const voteRoute = require('./routes/vote');
 const aiRoute = require('./routes/ai');
-const adminRoute = require('./routes/admin'); // Import admin cleanly
+const adminRoute = require('./routes/admin'); 
+
+// ✅ UPDATED: Points to the new location in the 'routes' folder
+const enquiryRoute = require('./routes/enquiryroute'); 
 
 const app = express();
 
@@ -47,6 +49,8 @@ app.use('/api/ai', aiRoute);
 // 5. Admin Route (Resident Approvals)
 app.use('/api/admin', adminRoute);
 
+// 6. Enquiry Route (Landing Page Forms)
+app.use('/api/enquiry', enquiryRoute); // <--- Uses the correct route file now
 
 
 // TEST ROUTE
