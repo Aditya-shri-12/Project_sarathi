@@ -1,13 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { createClient } = require('@supabase/supabase-js');
-const sendEmail = require('../utils/mailservice'); // ✅ Import the new service
-
-// Initialize Supabase
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-);
+const supabase = require('../lib/supabase'); // Use shared Supabase client
 
 // @route POST /api/enquiry
 router.post('/', async (req, res) => {
@@ -15,61 +8,69 @@ router.post('/', async (req, res) => {
 
   // 1. Validation
   if (!org || !head || !email || !phone) {
-    return res.status(400).json({ success: false, message: "Missing required fields" });
+    return res.status(400).json({ 
+      success: false, 
+      error: "Missing required fields: Organization, Committee Head, Email, and Phone are required" 
+    });
+  }
+
+  // Email validation
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    return res.status(400).json({ success: false, error: "Invalid email format" });
   }
 
   try {
     // 2. Insert into Database
+    // Map frontend field names to database column names
     const { data, error } = await supabase
       .from('enquiries')
-      .insert([{ org_name: org, head_name: head, city, state, phone, email, status: 'Pending' }])
+      .insert([{ 
+        organization_name: org, 
+        committee_head: head, 
+        city: city || null, 
+        state: state || null, 
+        contact_number: phone, 
+        email: email, 
+        status: 'pending' 
+      }])
       .select();
 
-    if (error) throw error;
-
-    // ============================================
-    // 3. ✅ SEND EMAILS 
-    // ============================================
-    
-    // Email A: "Thank You" to the User
-    await sendEmail({
-      to: email,
-      subject: "Welcome to Saarthi - Enquiry Received",
-      html: `
-        <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
-          <h2 style="color: #0f172a;">Welcome to Saarthi!</h2>
-          <p>Dear <strong>${head}</strong>,</p>
-          <p>Thank you for registering <strong>${org}</strong> with us.</p>
-          <p>Our team has received your details and will contact you at <strong>${phone}</strong> shortly.</p>
-          <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
-          <p style="color: #64748b; font-size: 14px;">Regards,<br><strong>Team Saarthi</strong></p>
-        </div>
-      `
-    });
-
-    // Email B: Alert to ADMIN (You)
-    if (process.env.ADMIN_EMAIL) {
-        await sendEmail({
-          to: process.env.ADMIN_EMAIL,
-          subject: `🚀 New Lead: ${org}`,
-          html: `
-            <h3>New Enquiry Received</h3>
-            <ul>
-              <li><strong>Org:</strong> ${org}</li>
-              <li><strong>Head:</strong> ${head}</li>
-              <li><strong>Phone:</strong> ${phone}</li>
-              <li><strong>Email:</strong> ${email}</li>
-            </ul>
-          `
+    if (error) {
+      console.error("Database error:", error);
+      
+      // Handle duplicate email error
+      if (error.code === '23505') {
+        return res.status(400).json({ 
+          success: false,
+          error: "An enquiry with this email already exists. Please use a different email." 
         });
+      }
+      
+      // Handle missing table error
+      if (error.code === '42P01') {
+        return res.status(500).json({ 
+          success: false,
+          error: "Database table not found. Please ensure the 'enquiries' table exists in Supabase." 
+        });
+      }
+      
+      throw error;
     }
 
-    // 4. Send Response
-    res.status(201).json({ success: true, message: "Enquiry submitted successfully!", data });
+    // 3. Send Response
+    res.status(201).json({ 
+      success: true, 
+      message: "Enquiry submitted successfully! We'll contact you soon.", 
+      data: data[0] 
+    });
 
   } catch (err) {
-    console.error("Route Error:", err.message);
-    res.status(500).json({ error: "Failed to submit enquiry" });
+    console.error("Enquiry Route Error:", err);
+    res.status(500).json({ 
+      success: false,
+      error: err.message || "Failed to submit enquiry. Please try again later." 
+    });
   }
 });
 

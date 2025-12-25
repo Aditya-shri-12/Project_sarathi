@@ -1,7 +1,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { Building2, MapPin, Phone, Mail, User, Send, X, CheckCircle } from "lucide-react";
 import { useState } from "react";
-import axios from "axios"; 
+import axios from "../lib/axios"; 
 
 // ✅ FIX: InputField moved OUTSIDE the main component
 const InputField = ({ name, value, onChange, icon: Icon, type = "text", placeholder, disabled }) => (
@@ -33,10 +33,26 @@ const EnquiryForm = ({ isOpen, onClose }) => {
   const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
   const handleSubmit = async () => {
+    // Client-side validation
+    if (!formData.org || !formData.head || !formData.email || !formData.phone) {
+      setStatus("error");
+      setErrorMessage("Please fill in all required fields (Organization, Head, Email, Phone)");
+      return;
+    }
+
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      setStatus("error");
+      setErrorMessage("Please enter a valid email address");
+      return;
+    }
+
     setStatus("loading");
     setErrorMessage("");
     try {
-      const res = await axios.post("http://localhost:5000/api/enquiry", formData);
+      const res = await axios.post("/api/enquiry", formData);
+      
       if (res.data.success) {
         setStatus("success");
         setTimeout(() => {
@@ -44,11 +60,29 @@ const EnquiryForm = ({ isOpen, onClose }) => {
           setStatus("idle");
           onClose();
         }, 3000);
+      } else {
+        setStatus("error");
+        setErrorMessage(res.data.error || res.data.message || "Failed to submit enquiry");
       }
     } catch (err) {
-      console.error(err);
+      console.error("Enquiry submission error:", err);
       setStatus("error");
-      setErrorMessage("Failed to connect to server.");
+      
+      // Extract error message from response
+      let errorMsg = "Failed to submit enquiry. Please try again.";
+      if (err.response?.data) {
+        if (err.response.data.error) {
+          errorMsg = err.response.data.error;
+        } else if (err.response.data.message) {
+          errorMsg = err.response.data.message;
+        } else if (typeof err.response.data === 'string') {
+          errorMsg = err.response.data;
+        }
+      } else if (err.message) {
+        errorMsg = err.message;
+      }
+      
+      setErrorMessage(errorMsg);
     }
   };
 
@@ -60,6 +94,7 @@ const EnquiryForm = ({ isOpen, onClose }) => {
 
   return (
     <AnimatePresence>
+      {isOpen && (
       <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
         <motion.div 
           variants={modalVariants}
@@ -124,6 +159,7 @@ const EnquiryForm = ({ isOpen, onClose }) => {
           )}
         </motion.div>
       </div>
+      )}
     </AnimatePresence>
   );
 };
