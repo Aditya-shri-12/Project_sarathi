@@ -26,7 +26,7 @@ const LandingPage = () => {
       {/* 1. NAVBAR */}
       <nav className="bg-slate-900 text-white p-6 flex justify-between items-center sticky top-0 z-50 shadow-md">
         <div className="text-xl font-bold tracking-wide flex items-center gap-2">
-          Saarthi <span className="text-xs font-normal text-slate-400 ml-1">by ASB CREATIONS</span>
+          Sarthi <span className="text-xs font-normal text-slate-400 ml-1"></span>
         </div>
         <div className="flex gap-6 text-sm font-medium items-center">
           <button 
@@ -166,7 +166,7 @@ const LandingPage = () => {
             <p className="text-sm mt-1">Empowering Housing Societies.</p>
           </div>
           <div className="text-xs text-slate-600">
-            &copy; 2025 ASB CREATIONS. Powered by MERN Stack & Google Gemini.
+            &copy; . Powered by MERN Stack & Google Gemini.
           </div>
         </div>
       </footer>
