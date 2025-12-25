@@ -12,6 +12,7 @@ const electionRoute = require('./routes/elections');
 const voteRoute = require('./routes/vote');
 const aiRoute = require('./routes/ai');
 const adminRoute = require('./routes/admin'); // Import admin cleanly
+const enquiryRoute = require('./routes/enquiry');
 
 const app = express();
 
@@ -47,7 +48,8 @@ app.use('/api/ai', aiRoute);
 // 5. Admin Route (Resident Approvals)
 app.use('/api/admin', adminRoute);
 
-
+// 6. Enquiry Route (Organization Enquiries)
+app.use('/api/enquiry', enquiryRoute);
 
 // TEST ROUTE
 app.get('/', (req, res) => {
