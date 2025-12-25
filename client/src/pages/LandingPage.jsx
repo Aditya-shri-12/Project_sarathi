@@ -1,11 +1,13 @@
 import { useNavigate } from "react-router-dom";
 import { FiShield, FiUser, FiAward, FiLock, FiUserCheck, FiArrowRight } from "react-icons/fi";
-import HowItWorks from "../components/HowItWorks";
+import HowItWorks from "../components/HowItWorks"; // Ensure path is correct based on your folder structure
+import EnquiryForm from "./EnquiryForm"; // Ensure path is correct based on your folder structure
 import { useState } from "react";
 
 const LandingPage = () => {
   const navigate = useNavigate();
   const [showHowItWorks, setShowHowItWorks] = useState(false);
+  const [showEnquiry, setShowEnquiry] = useState(false); // New State for Enquiry
 
   // --- NAVIGATION HELPERS ---
   const goToAdminLogin = () => {
@@ -29,11 +31,21 @@ const LandingPage = () => {
           Saarthi <span className="text-xs font-normal text-slate-400 ml-1">by ASB CREATIONS</span>
         </div>
         <div className="flex gap-6 text-sm font-medium items-center">
+          
+          {/* How It Works Button */}
           <button 
             onClick={() => setShowHowItWorks(true)} 
             className="text-slate-300 hover:text-white transition cursor-pointer"
           >
             How It Works
+          </button>
+
+          {/* Enquiry Button (New) */}
+          <button 
+            onClick={() => setShowEnquiry(true)} 
+            className="text-slate-300 hover:text-white transition cursor-pointer"
+          >
+            Enquiry
           </button>
           
           {/* Quick Register Link */}
@@ -171,8 +183,9 @@ const LandingPage = () => {
         </div>
       </footer>
 
-      {/* The Popup Component */}
+      {/* The Popup Components */}
       <HowItWorks isOpen={showHowItWorks} onClose={() => setShowHowItWorks(false)} />
+      <EnquiryForm isOpen={showEnquiry} onClose={() => setShowEnquiry(false)} />
     </div>
   );
 };
