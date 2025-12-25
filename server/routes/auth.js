@@ -139,12 +139,13 @@ router.post('/login', async (req, res) => {
 
     if (profileError) return res.status(400).json({ error: "Profile not found" });
 
-    // 3. Send success
+    // 3. Send success with userId
     res.status(200).json({
       success: true,
       message: "Login successful",
       token: authData.session.access_token,
-      role: profile.role, // Frontend uses this to redirect
+      role: profile.role, 
+      userId: profile.id, // ✅ ADDED: This allows frontend to save user ID
       user: {
         id: profile.id,
         name: profile.username,
@@ -168,7 +169,7 @@ router.post('/admin-login', async (req, res) => {
   console.log("-----------------------------------------");
   console.log("👉 ADMIN LOGIN ATTEMPT:");
   console.log("📧 Email:", email);
-  console.log("🔑 Password:", password); // (Don't show this in production!)
+  // console.log("🔑 Password:", password); // Security: Don't log passwords
 
   try {
     // 1. Authenticate with Supabase
@@ -213,7 +214,8 @@ router.post('/admin-login', async (req, res) => {
       success: true,
       message: "Welcome Admin",
       token: authData.session.access_token,
-      role: 'admin'
+      role: 'admin',
+      userId: profile.id // ✅ ADDED: Admins might need their ID too
     });
 
   } catch (err) {

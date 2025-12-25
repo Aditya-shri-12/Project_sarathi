@@ -48,6 +48,9 @@ const Login = () => {
         localStorage.setItem("token", res.data.token);
         localStorage.setItem("role", res.data.role);
 
+        // ✅ ADDED: Save the User ID locally so the Nomination Form can use it
+        localStorage.setItem("userId", res.data.userId);
+
         // --- SMART REDIRECT (The Brain) ---
         // This switch decides exactly where the user lands based on their database role
         switch(res.data.role) {

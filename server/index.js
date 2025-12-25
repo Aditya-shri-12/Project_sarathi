@@ -11,9 +11,10 @@ const electionRoute = require('./routes/elections');
 const voteRoute = require('./routes/vote');
 const aiRoute = require('./routes/ai');
 const adminRoute = require('./routes/admin'); 
-
-// ✅ UPDATED: Points to the new location in the 'routes' folder
 const enquiryRoute = require('./routes/enquiryroute'); 
+
+// ✅ NEW: Import the Candidates Route
+const candidatesRoute = require('./routes/candidates'); 
 
 const app = express();
 
@@ -50,7 +51,10 @@ app.use('/api/ai', aiRoute);
 app.use('/api/admin', adminRoute);
 
 // 6. Enquiry Route (Landing Page Forms)
-app.use('/api/enquiry', enquiryRoute); // <--- Uses the correct route file now
+app.use('/api/enquiry', enquiryRoute);
+
+// 7. ✅ Candidates Route (Nominations)
+app.use('/api/candidates', candidatesRoute); 
 
 
 // TEST ROUTE
